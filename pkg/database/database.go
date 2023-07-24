@@ -1,13 +1,16 @@
 // TODO DOC COMMENTS everything
-// TODO standardize use of print and logs: use only one
-package todo
+package database
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/mateusoliveira43/go_cli/pkg/util"
 )
+
+const ErrorMessage = "An error ocurred while trying to %v database items"
 
 type ToDoItem struct {
 	Index       int
@@ -49,29 +52,37 @@ func (item *ToDoItem) PrettyDone() string {
 	return "[ ]"
 }
 
-func SaveItems(filename string, items []ToDoItem) error {
-	b, err := json.Marshal(items)
-	if err != nil {
-		return err
+func SaveItems(filename string, items []ToDoItem, debug bool) {
+	if debug {
+		util.Debug(fmt.Sprintf("Saving database items: %+v", items))
 	}
-	fmt.Println(string(b))
-	err = os.WriteFile(filename, b, 0644)
+	bytesContent, err := json.Marshal(items)
 	if err != nil {
-		return err
+		util.Error(fmt.Sprintf(ErrorMessage, "save"))
+		util.Fatal(fmt.Sprintf("%v", err))
 	}
-	return nil
+	err = os.WriteFile(filename, bytesContent, 0644)
+	if err != nil {
+		util.Error(fmt.Sprintf(ErrorMessage, "save"))
+		util.Fatal(fmt.Sprintf("%v", err))
+	}
 }
 
-func ReadItems(filename string) ([]ToDoItem, error) {
-	b, err := os.ReadFile(filename)
+func LoadItems(filename string, debug bool) []ToDoItem {
+	bytesContent, err := os.ReadFile(filename)
 	if err != nil {
-		return []ToDoItem{}, err
+		util.Error(fmt.Sprintf(ErrorMessage, "load"))
+		util.Fatal(fmt.Sprintf("%v", err))
 	}
 	var items []ToDoItem
-	if err := json.Unmarshal(b, &items); err != nil {
-		return []ToDoItem{}, err
+	if err = json.Unmarshal(bytesContent, &items); err != nil {
+		util.Error(fmt.Sprintf(ErrorMessage, "load"))
+		util.Fatal(fmt.Sprintf("%v", err))
 	}
-	return items, nil
+	if debug {
+		util.Debug(fmt.Sprintf("Loaded database items: %+v", items))
+	}
+	return items
 }
 
 // Implements sort.Interface for an array of To Do Items based mainly on the Priority field.
